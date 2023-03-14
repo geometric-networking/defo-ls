@@ -1,6 +1,6 @@
 # DEFO - LS
 
-This is a fork of the original code containing the Link Guided Local Search algorithm described in ["Gay, Steven, Renaud Hartert, and Stefano Vissicchio. *Expect the unexpected: Sub-second optimization for segment routing.* IEEE INFOCOM 2017-IEEE Conference on Computer Communications. IEEE, 2017."](https://ieeexplore.ieee.org/abstract/document/8056971).
+This is a fork of the original code containing the Link Guided Local Search algorithm described in ["Gay, Steven, Renaud Hartert, and Stefano Vissicchio. *Expect the unexpected: Sub-second optimization for segment routing.* (IEEE INFOCOM 2017)"](https://ieeexplore.ieee.org/abstract/document/8056971) that I have made to improve the algorithm's ease of use.
 
 ### Changes made to [Original](https://github.com/rhartert-zz/defo-ls)
 

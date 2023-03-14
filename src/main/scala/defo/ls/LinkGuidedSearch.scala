@@ -14,7 +14,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   private[this] var alpha = 8.0
 
-  private[this] val maxMidpoints = 2;
+  private[this] val maxMidpoints = 2
 
   private[this] val nEdges = topology.nEdges
   private[this] val nNodes = topology.nNodes
@@ -26,9 +26,10 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   // The SR Path used to forward the demand in the network. 
   // They are initialized with no midpoint.
-  private[this] val srPaths = Array.tabulate(nDemands)(d => {
+  private[this] val _srPaths = Array.tabulate(nDemands)(d => {
     new SRPath(demands(d).src, demands(d).dest, maxMidpoints)
   })
+  def srPaths = _srPaths  // getter
 
   // Best move
   private final val NONE = 0
@@ -74,35 +75,35 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
       if (moveType != NONE) {
         //println("------")
-        //println(srPaths(movePath))
+        //println(_srPaths(movePath))
       }
 
       moveType match {
         case RESET => {
           //println("RESET")
           resetMove(movePath, true)
-          srPaths(movePath).clear()
+          _srPaths(movePath).clear()
         }
         case INSERT => {
           //println("INSERT " + moveMidpoint + " at " + movePosition)
           insertMove(movePath, movePosition, moveMidpoint, true)
-          srPaths(movePath).insert(movePosition, moveMidpoint)
+          _srPaths(movePath).insert(movePosition, moveMidpoint)
         }
         case REPLACE => {
           //println("REPLACE " + moveMidpoint + " at " + movePosition)
           replaceMove(movePath, movePosition, moveMidpoint, true)
-          srPaths(movePath).substitute(movePosition, moveMidpoint)
+          _srPaths(movePath).substitute(movePosition, moveMidpoint)
         }
         case REMOVE => {
           //println("REMOVE at " + movePosition)
           removeMove(movePath, movePosition, true)
-          srPaths(movePath).remove(movePosition)
+          _srPaths(movePath).remove(movePosition)
         }
         case _ => {}
       }
 
       if (moveType != NONE) {
-        //println(srPaths(movePath))
+        //println(_srPaths(movePath))
       }
 
       // Update best score.
@@ -193,7 +194,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
     var d = nDemands
     while (d > 0) {
       d -= 1
-      val srPath = srPaths(d)
+      val srPath = _srPaths(d)
       srPath.clear()
       addFlow(d, srPath.src, srPath.dest, demands(d).bw, true)
     }
@@ -219,7 +220,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
     val it = a.sortBy(d => -demands(d).bw).iterator
     while (it.hasNext) {
       val d = it.next()
-      val srPath = srPaths(d)
+      val srPath = _srPaths(d)
 
       // Clear saved state
       state.undoChanges()
@@ -318,7 +319,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   private def resetMove(d: Int, apply: Boolean): Unit = {
     nMoves += 1
-    val srPath = srPaths(d)
+    val srPath = _srPaths(d)
     var i = 1
     while (i < srPath.length) {
       removeFlow(d, srPath.get(i - 1), srPath.get(i), demands(d).bw, apply)
@@ -329,7 +330,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   private def insertMove(d: Int, pos: Int, midpoint: Int, apply: Boolean): Unit = {
     nMoves += 1
-    val srPath = srPaths(d)
+    val srPath = _srPaths(d)
     val s = srPath.get(pos - 1)
     val t = srPath.get(pos)
     removeFlow(d, s, t, demands(d).bw, apply)
@@ -339,7 +340,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   private def replaceMove(d: Int, pos: Int, midpoint: Int, apply: Boolean): Unit = {
     nMoves += 1
-    val srPath = srPaths(d)
+    val srPath = _srPaths(d)
     val old = srPath.get(pos)
     val s = srPath.get(pos - 1)
     val t = srPath.get(pos + 1)
@@ -351,7 +352,7 @@ class LinkGuidedSearch(topology: Topology, capacities: Array[Double], ecmps: Seg
 
   private def removeMove(d: Int, pos: Int, apply: Boolean): Unit = {
     nMoves += 1
-    val srPath = srPaths(d)
+    val srPath = _srPaths(d)
     val old = srPath.get(pos)
     val s = srPath.get(pos - 1)
     val t = srPath.get(pos + 1)
