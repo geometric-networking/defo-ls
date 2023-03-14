@@ -67,3 +67,6 @@ jitwatch.out
 project/**/metals.sbt
 
 .bsp
+
+# CUSTOM FOR THIS PROJECT (DEFO-LS)
+defo/
