@@ -15,9 +15,16 @@ import java.io.PrintWriter
 import java.io.File
 import defo.ls.SRPath
 
+
 object Main extends App {
 
-    assert(args.length == 4, "I didn't get proper args (topology file, demands file, time limit in ms, out file path)")
+    def getListOfFiles(dir: String): Array[(String, String)] = {
+        val d = new File(dir)
+        val files = d.listFiles.filter(_.isFile)
+        val filepaths = files.map(_.getPath).toArray
+        val filenames = files.map(_.getName).toArray
+        return filepaths zip filenames
+    }
 
     def readFileLines(filename: String): Array[String] = {
         var fileLines: Array[String] = Array[String]()
@@ -34,37 +41,126 @@ object Main extends App {
         return fileLines
     }
 
-    var edgeSrcs = ArrayBuffer[Int]()
-    var edgeDests = ArrayBuffer[Int]()
-    var capacities = ArrayBuffer[Double]()
-    var weights = ArrayBuffer[Int]()  // weights ~ delays
-    for (tLine <- readFileLines(args(0))) {
-        val tLineTokens = tLine.split(",")
-        edgeSrcs += tLineTokens(0).toInt
-        edgeDests += tLineTokens(1).toInt
-        capacities += tLineTokens(2).toDouble
-        weights += tLineTokens(3).toInt
-    }
-    var topology = Topology(edgeSrcs.toArray, edgeDests.toArray)
-    var ecmps = SegmentDB(topology, weights.toArray)
-
     def makeDemand(dLine: String): Demand = {
         val dLineTokens = dLine.split(",")
         return new Demand(dLineTokens(0).toInt, dLineTokens(1).toInt, dLineTokens(2).toDouble)
     }
 
-    val demands: Array[Demand] = readFileLines(args(1)).map(makeDemand)
-    val verbose = true
-    var lgs = new LinkGuidedSearch(topology, capacities.toArray, ecmps, demands, verbose)
-    val timeLimitInMS: Long = args(2).toLong
-    val objective: Double = 0
-    var lgsResults: Results = lgs.solve(timeLimitInMS, objective)
-    var srPaths: Array[SRPath] = lgs.srPaths
+    def getTopologyInfo(topologyFileLines: Array[String]): (Topology, Array[Int], Array[Double]) = {
+        var edgeSrcs = ArrayBuffer[Int]()
+        var edgeDests = ArrayBuffer[Int]()
+        var weights = ArrayBuffer[Int]()  // weights ~ delays
+        var capacities = ArrayBuffer[Double]()
 
-    // result handling
-    val pw = new PrintWriter(new File(args(3)))
-    for (srPath <- srPaths) {
-        pw.write(srPath.toString() + "\n")
+        def allIndicesOf(str: String, c: Char): List[Int] = {
+            return str.zipWithIndex.filter(pair => pair._1 == c).map(pair => pair._2).toList
+        }
+
+        def getKeyId(tLine: String): String = {
+            val idIdx = tLine.indexOf("id")
+            val allQuotesFromId = allIndicesOf(tLine.substring(idIdx), '"')
+            val res: String = tLine.slice(idIdx + allQuotesFromId(0) + 1, idIdx + allQuotesFromId(1))
+            return res
+        }
+
+        def extractNodes(tLine: String): (Int, Int) = {
+            val srcIdx: Int = tLine.indexOf("source")
+            val allQuotesFromSrc = allIndicesOf(tLine.substring(srcIdx), '"')
+            val src: Int = tLine.slice(srcIdx + allQuotesFromSrc(0) + 1, srcIdx + allQuotesFromSrc(1)).toInt
+
+            val dstIdx: Int = tLine.indexOf("target")
+            val allQuotesFromDst = allIndicesOf(tLine.substring(dstIdx), '"')
+            val dst: Int = tLine.slice(dstIdx + allQuotesFromDst(0) + 1, dstIdx + allQuotesFromDst(1)).toInt
+            
+            return (src, dst)
+        }
+
+        def extractValueStr(tLine: String): String = {
+            val rangleIdx: Int = tLine.indexOf(">")
+            val langleIdx: Int = tLine.substring(rangleIdx).indexOf("<")
+            val res: String = tLine.substring(rangleIdx + 1, rangleIdx + langleIdx)
+            return res
+        }
+
+        var delayKey: String = "NO_KEY"
+        var datarateKey: String = "NO_KEY"
+
+        for (tLine <- topologyFileLines) {
+            tLine match {
+                case tl if tLine contains "delay" => {
+                    val delayKeyId = getKeyId(tl)
+                    delayKey = s"key=${'"'}${delayKeyId}${'"'}"
+                }
+                case tl if tLine contains "datarate" => {
+                    val datarateKeyId = getKeyId(tl)
+                    datarateKey = s"key=${'"'}${datarateKeyId}${'"'}"
+                }
+                case tl if tLine contains "<edge" => {
+                    val srcAndDst = extractNodes(tl)
+                    edgeSrcs += srcAndDst._1
+                    edgeDests += srcAndDst._2
+                }
+                case tl if tLine contains delayKey => {
+                    weights += extractValueStr(tl).toInt
+                }
+                case tl if tLine contains datarateKey => {
+                    capacities += extractValueStr(tl).toDouble
+                }
+                case _ => {}
+            }
+        }
+        assert(edgeSrcs.length == edgeDests.length 
+            && edgeSrcs.length == weights.length 
+            && edgeSrcs.length == capacities.length, 
+            "error reading topology file: mismatching amount of src/dest nodes, weights and capacities")
+
+        var topology = Topology(edgeSrcs.toArray, edgeDests.toArray)
+        return (topology, weights.toArray, capacities.toArray)
     }
-    pw.close()
+
+    def getDemands(demandFileLines: Array[String]): Array[Demand] = {
+        var demands = ArrayBuffer[Demand]()
+        for (dLine <- demandFileLines) {
+            if (dLine.startsWith("demand_")) {
+                val dLineTokens = dLine.split(" ")  // ("demand_i", "src", "dest", "amount")
+                demands += new Demand(dLineTokens(1).toInt, dLineTokens(2).toInt, dLineTokens(3).toDouble)
+            }
+        }
+        assert(demands.length > 0, "I have read 0 demands from demand file")
+        return demands.toArray
+    }
+
+    // arg parsing
+    assert(args.length == 4, "I didn't get proper args (topology file, demands dir, time limit in ms, out file path)")
+    val topologyFile: String = args(0)
+    val demandsDir: String = args(1)
+    val timeLimitInMS: Long = args(2).toLong
+    val outfileStem: String = args(3)
+
+    // get information for solver
+    var topologyFileLines: Array[String] = readFileLines(topologyFile)
+    var topologyInfo: (Topology, Array[Int], Array[Double]) = getTopologyInfo(topologyFileLines)
+    var topology: Topology = topologyInfo._1
+    var weights: Array[Int] = topologyInfo._2
+    var capacities: Array[Double] = topologyInfo._3
+    var ecmps: SegmentDB = SegmentDB(topology, weights.toArray)
+    val verbose: Boolean = true
+    val objective: Double = 0
+
+    // solve for each demand file in demands given directory
+    for ((demandFilepath, demandFilename) <- getListOfFiles(demandsDir)) {
+        val demands: Array[Demand] = getDemands(readFileLines(demandFilepath))
+
+        // solve
+        var lgs = new LinkGuidedSearch(topology, capacities.toArray, ecmps, demands, verbose)
+        var lgsResults: Results = lgs.solve(timeLimitInMS, objective)
+        var srPaths: Array[SRPath] = lgs.srPaths
+
+        // write results
+        val pw = new PrintWriter(new File(outfileStem + "_" + demandFilename))
+        for (srPath <- srPaths) {
+            pw.write(srPath.toString() + "\n")
+        }
+        pw.close()
+    }
 }
