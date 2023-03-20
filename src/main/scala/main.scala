@@ -12,15 +12,12 @@ import scala.collection.mutable.ArrayBuffer
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.PrintWriter
-import java.io.File
-import defo.ls.SRPath
-
+import java.io.{File => JFile}
 
 object Main extends App {
 
-    def getListOfFiles(dir: String): Array[(String, String)] = {
-        val d = new File(dir)
-        val files = d.listFiles.filter(_.isFile)
+    def getListOfFiles(dir: JFile): Array[(String, String)] = {
+        val files = dir.listFiles.filter(_.isFile)
         val filepaths = files.map(_.getPath).toArray
         val filenames = files.map(_.getName).toArray
         return filepaths zip filenames
@@ -131,11 +128,14 @@ object Main extends App {
     }
 
     // arg parsing
-    assert(args.length == 4, "I didn't get proper args (topology file, demands dir, time limit in ms, out file path)")
-    val topologyFile: String = args(0)
-    val demandsDir: String = args(1)
-    val timeLimitInMS: Long = args(2).toLong
-    val outfileStem: String = args(3)
+    assert(args.length == 3, "I didn't get proper args (path to data folder, time limit in ms, out subdir name in data folder)")
+    val dataDirStr: String = args(0)
+    val topologyFile: String = dataDirStr + "/graph_attr.graphml"
+    val demandsDir: JFile = new JFile(dataDirStr + "/TM")
+    val outDir: JFile = new JFile(dataDirStr + "/" + args(2))
+    assert(!outDir.exists(), "outDir already exists, please choose a different name")
+    outDir.mkdir()
+    val timeLimitInMS: Long = args(1).toLong
 
     // get information for solver
     var topologyFileLines: Array[String] = readFileLines(topologyFile)
@@ -157,7 +157,7 @@ object Main extends App {
         var srPaths: Array[SRPath] = lgs.srPaths
 
         // write results
-        val pw = new PrintWriter(new File(outfileStem + "_" + demandFilename))
+        val pw = new PrintWriter((outDir + "/" + demandFilename).toString())
         for (srPath <- srPaths) {
             pw.write(srPath.toString() + "\n")
         }
