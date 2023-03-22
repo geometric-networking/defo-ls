@@ -70,3 +70,4 @@ project/**/metals.sbt
 
 # CUSTOM FOR THIS PROJECT (DEFO-LS)
 defo/
+*.jar

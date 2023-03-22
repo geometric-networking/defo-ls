@@ -1,0 +1,5 @@
+#! /bin/bash
+
+sbt clean
+sbt assembly
+cp target/scala-2.13/defo-ls-assembly-0.0.1.jar srls.jar
