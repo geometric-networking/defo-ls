@@ -11,20 +11,25 @@ This is a fork of the original code containing the Link Guided Local Search algo
 
 ### Installation
 
-1. Install `java`, `scala` and `sbt` for your platform.
+1. Install `java`, `scala 2.13` and `sbt` for your platform.
 2. `git clone https://github.com/geometric-networking/defo-ls.git`
 3. `cd defo-ls/`
-4. `sbt clean && sbt assembly` (compiles the package and creates a `.jar` executable)
-5. your executable `.jar` file should lie somewhere in `target/scala-<your version>/`.
+4. `./compile` (compiles the package and creates a `.jar` executable)
+5. your executable `.jar` file is available at `srls.jar`.
 
 ### Usage
 
-You'll need to provide a topology file in the [graphml format](http://graphml.graphdrawing.org) that includes nodes with integer node IDs, as well as edges with "source" and "target" IDs that are attributed with with "datarate" and "delay" values. Also, you'll need a directory containing at least one traffic file containing oen demand per line with the following syntax: `demand_<i> <x> <y> <z>`, where i is the index of the demand, x and y source and target IDs, and z the demanded amount. An example can be found in `data/example`. 
+You'll need to provide a topology file in the [graphml format](http://graphml.graphdrawing.org) named `graph_attr.graphml` that includes nodes with integer node IDs, as well as edges with "source" and "target" IDs that are attributed with with "datarate" and "delay" values. Also, you'll need a directory `TM/` containing at least one traffic file containing at least one demand line with the following syntax: `demand_<i> <x> <y> <z>`, where `i` is the index of the demand, `x` and `y` source and target IDs, and `z` the demanded amount. An example can be found in `data/example`. 
 
-The command looks like this:
+**Command structure:**
 
-`java -jar <path-to-the-generated-executable> <data folder> <max. ms per optimization> <output_dir>`
+`java -jar srls.jar <data folder> <max. ms per optimization> <output_dir>`
 
-e.g. for scala 2.13, invoking the following command from the repo's root directory will optimize for 100ms per provided traffic matrix and store the results in `data/example/out_123456`:
+**Example Command:**
 
-`java -jar target/scala-2.13/defo-ls-assembly-0.0.1.jar data/example 100 out_123456`
+`java -jar srls.jar data/example 100 my_out` uses the following config:
+
+- data sits in `data/example`
+- optimizing for 100ms per provided traffic matrix
+- storing the results in `data/example/my_out`
+
