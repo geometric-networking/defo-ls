@@ -1,5 +1,35 @@
 #! /bin/bash
 
+# Function to check if a program is installed
+is_installed() {
+    if ! command -v $1 &> /dev/null; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+# Check for Java Runtime Environment
+if ! is_installed java; then
+    echo "Installing Java Runtime Environment..."
+    sudo apt update
+    sudo apt install -y default-jre
+else
+    echo "Java Runtime Environment is already installed."
+fi
+
+# Check for SBT (Scala Build Tool)
+if ! is_installed sbt; then
+    echo "Installing SBT (Scala Build Tool)..."
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+    echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+    sudo apt update
+    sudo apt install -y sbt
+else
+    echo "SBT (Scala Build Tool) is already installed."
+fi
+
 sbt clean
 sbt assembly
 cp target/scala-2.13/defo-ls-assembly-0.0.1.jar srls.jar
